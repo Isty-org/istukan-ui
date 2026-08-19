@@ -26,13 +26,18 @@ jobs:
           notes="channel/${RELEASE_TAG}/RELEASE_NOTES.md"
           test -f "$notes"
 
+          draft_release=false
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release edit "$RELEASE_TAG" --title "Isty Control — Kaneo ${RELEASE_TAG}" --notes-file "$notes"
           else
-            gh release create "$RELEASE_TAG" --title "Isty Control — Kaneo ${RELEASE_TAG}" --notes-file "$notes"
+            gh release create "$RELEASE_TAG" --draft --title "Isty Control — Kaneo ${RELEASE_TAG}" --notes-file "$notes"
+            draft_release=true
           fi
 
           shopt -s nullglob
           assets=(latest.json "channel/${RELEASE_TAG}"/*.exe "channel/${RELEASE_TAG}"/*.dmg "channel/${RELEASE_TAG}"/*.tar.gz "channel/${RELEASE_TAG}"/*.sig)
           test "${#assets[@]}" -gt 1
           gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+          if [ "$draft_release" = true ]; then
+            gh release edit "$RELEASE_TAG" --draft=false
+          fi
