@@ -1,0 +1,38 @@
+name: Опубликовать установщики
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Забрать подписанные файлы
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Создать или обновить публичный релиз
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          notes="channel/${RELEASE_TAG}/RELEASE_NOTES.md"
+          test -f "$notes"
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --title "Isty Control — Kaneo ${RELEASE_TAG}" --notes-file "$notes"
+          else
+            gh release create "$RELEASE_TAG" --title "Isty Control — Kaneo ${RELEASE_TAG}" --notes-file "$notes"
+          fi
+
+          shopt -s nullglob
+          assets=(latest.json "channel/${RELEASE_TAG}"/*.exe "channel/${RELEASE_TAG}"/*.dmg "channel/${RELEASE_TAG}"/*.tar.gz "channel/${RELEASE_TAG}"/*.sig)
+          test "${#assets[@]}" -gt 1
+          gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
